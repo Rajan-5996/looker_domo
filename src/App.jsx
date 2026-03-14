@@ -1,7 +1,42 @@
-import DefaultPage from "./pages/index";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { GridBackground } from "./components/BackgroundGrid";
+import Header from "./components/Header";
+import { DashBoard, LookerAuth, Migrate } from "./pages";
 
 function App() {
-  return <DefaultPage />;
+  return (
+    <div
+      style={{
+        height: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        position: "relative",
+        background: "var(--bg)",
+      }}
+    >
+      <GridBackground />
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          overflow: "hidden",
+        }}
+      >
+        <Header />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<LookerAuth />} />
+            <Route path="/dashboard" element={<DashBoard />} />
+            <Route path="/migrate" element={<Migrate />} />
+          </Routes>
+        </BrowserRouter>
+      </div>
+    </div>
+  );
 }
 
 export default App;

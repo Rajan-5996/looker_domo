@@ -5,8 +5,54 @@
     "width": 3,
     "height": 3
   },
-  "mapping": [],
-  "collections": [],
   "workflowMapping": [],
-  "packagesMapping": []
+  "packagesMapping": [
+    {
+      "name": "Domo Card and Page Creation",
+      "alias": "createcard",
+      "packageId": "6fd321bc-ff42-437b-9479-20b9eeac30fc",
+      "version": "1.0.1",
+      "functionName": "createCard",
+      "parameters": [
+        {
+          "name": "pageId",
+          "displayName": "pageId",
+          "type": "number",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null,
+          "alias": "pageId"
+        },
+        {
+          "name": "config",
+          "displayName": "config",
+          "type": "object",
+          "value": null,
+          "nullable": false,
+          "isList": false,
+          "children": [],
+          "entitySubType": null,
+          "alias": "config"
+        }
+      ],
+      "output": {
+        "name": "response",
+        "displayName": "response",
+        "type": "object",
+        "value": null,
+        "nullable": true,
+        "isList": false,
+        "children": [],
+        "entitySubType": null,
+        "alias": "response"
+      }
+    }
+  ],
+  "fileName": "manifest.json",
+  "datasetsMapping": [],
+  "collectionsMapping": [],
+  "id": "09a61537-2e1d-489b-b157-d69fab4591dc",
+  "proxyId": "2423fdbb-2e07-4b9a-82df-55048560ab17"
 }
