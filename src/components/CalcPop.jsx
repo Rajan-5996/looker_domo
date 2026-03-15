@@ -1,3 +1,7 @@
+import { motion } from "framer-motion";
+import { FxIcon } from "./icons";
+import { X } from "lucide-react";
+
 export const CalcPopup = ({ viz, calculatedFields, onClose }) => {
   if (!viz) return null;
   const cfMap = {};

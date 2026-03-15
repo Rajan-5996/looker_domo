@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   BarChartIcon,
   MapIcon,
-  X,
   ZapIcon,
 } from "lucide-react";
 import { createCard } from "@/API/dataApi";
