@@ -12,7 +12,6 @@ import {
   ZapIcon,
 } from "lucide-react";
 import { createCard } from "@/API/dataApi";
-import { mapVizToCardConfig } from "@/helper/mapVizToCards";
 import { CalcPopup } from "@/components/CalcPop";
 import { CustomCheckbox, FieldError, SectionCard } from "@/components/utility";
 import { CalcIcon, DashboardIcon, IdIcon, TokenIcon } from "@/components/icons";
@@ -26,6 +25,10 @@ export const Migrate = () => {
     previewData,
     previewLoading,
     previewError,
+    migrateDashboard,
+    lookerInstanceUrl,
+    lookerClientId,
+    lookerClientSecret,
   } = useAppContext();
 
   const dashboardTitle =
@@ -91,6 +94,24 @@ export const Migrate = () => {
       });
   };
 
+  const getSchema = async () => {
+    if (!selectedDash?.id) return;
+    return await migrateDashboard({
+      looker_url: String(lookerInstanceUrl),
+      looker_client_id: String(lookerClientId),
+      looker_client_secret: String(lookerClientSecret),
+      looker_id: String(selectedDash.id),
+      dataset_mapping: Object.fromEntries(
+        Object.entries(resolvedMappings || {}).map(([k, v]) => [
+          String(k),
+          String(v),
+        ]),
+      ),
+      selected_visual_ids: [...selectedVisualIds].map(String), // ← spread Set first
+      domo_page_id: String(domoForm?.pageId || ""),
+    });
+  };
+
   const executeMigration = async () => {
     const fErrs = {};
     if (!domoForm.pageId.trim()) fErrs.pageId = "Page ID is required.";
@@ -105,8 +126,7 @@ export const Migrate = () => {
 
     if (Object.keys(fErrs).length > 0 || Object.keys(mErrs).length > 0) return;
 
-    const selectedIds = [...selectedVisualIds];
-    if (selectedIds.length === 0) {
+    if (selectedVisualIds.size === 0) {
       setStatus(
         "error:No charts selected. Please check at least one chart to migrate.",
       );
@@ -116,14 +136,138 @@ export const Migrate = () => {
     setStatus("loading");
 
     try {
+      const res = await getSchema();
+      const { unified_schema, dataset_mapping } = res.data;
+
+      console.log("unified_schema:", unified_schema);
+
+      const datasetIdByRef = {};
+      for (const ds of unified_schema.datasets || []) {
+        const uuid =
+          dataset_mapping?.[ds.id] ||
+          dataset_mapping?.[ds.name] ||
+          resolvedMappings?.[ds.name];
+        if (uuid) datasetIdByRef[ds.id] = String(uuid);
+      }
+
+      const selectedVisualIdSet = new Set([...selectedVisualIds].map(String));
+
+      const selectedVisuals = (unified_schema.pages || [])
+        .flatMap((p) => p.visuals || [])
+        .filter(
+          (viz) =>
+            selectedVisualIdSet.has(String(viz.id)) && viz.type !== "TEXT",
+        );
+
+      if (selectedVisuals.length === 0) {
+        setStatus(
+          "error:No selected visuals found. Please reselect charts and try again.",
+        );
+        return;
+      }
+
       const pageId = domoForm.pageId;
-      const selectedVisuals = visuals.filter((v) =>
-        selectedVisualIds.has(v.id),
-      );
+      let createdCount = 0;
 
       for (const viz of selectedVisuals) {
-        const config = mapVizToCardConfig(viz, resolvedMappings);
+        const datasetRef =
+          viz.datasetRef || viz.datasetId || unified_schema.datasets?.[0]?.id;
+        const datasetId = datasetIdByRef[datasetRef];
+
+        if (!datasetId) {
+          console.warn(
+            `Skipping visual ${viz.id} — no UUID for ref: ${datasetRef}`,
+          );
+          continue;
+        }
+
+        const xColumns = (viz.x || []).map((col) => ({
+          column: typeof col === "string" ? col : col.column,
+          mapping: "ITEM",
+        }));
+
+        const stackColumns = (viz.stack || []).map((col) => ({
+          column: typeof col === "string" ? col : col.column,
+          mapping: "SERIES",
+        }));
+
+        const measureColumns = (viz.measures || []).map((m) => ({
+          column: m.column,
+          aggregation: m.aggregation || "SUM",
+          mapping: "VALUE",
+        }));
+
+        const allColumns = [...xColumns, ...stackColumns, ...measureColumns];
+
+        const orderBy =
+          viz.sortOrder && allColumns.length > 0
+            ? [
+                {
+                  column: allColumns[0].column,
+                  order: viz.sortOrder,
+                  aggregation: null,
+                },
+              ]
+            : [];
+
+        const groupBy = (viz.x || []).map((col) => ({
+          column: typeof col === "string" ? col : col.column,
+        }));
+
+        const config = {
+          definition: {
+            subscriptions: {
+              main: {
+                name: "main",
+                columns: allColumns,
+                filters: viz.filters || [],
+                orderBy,
+                groupBy,
+                fiscal: false,
+                projection: false,
+                distinct: false,
+              },
+            },
+            formulas: { dsUpdated: [], dsDeleted: [], card: [] },
+            annotations: { new: [], modified: [], deleted: [] },
+            conditionalFormats: { card: [], datasource: [] },
+            controls: [],
+            segments: { active: [], create: [], update: [], delete: [] },
+            charts: {
+              main: {
+                component: "main",
+                chartType: viz.type || "KPI",
+                overrides: viz.overrides || {},
+                goal: null,
+              },
+            },
+            dynamicTitle: {
+              text: viz.title ? [{ text: viz.title, type: "TEXT" }] : [],
+            },
+            dynamicDescription: {
+              text: [],
+              displayOnCardDetails: true,
+            },
+            chartVersion: viz.chartVersion || "1",
+            inputTable: false,
+            title: viz.title || "Card",
+            description: viz.description || "",
+            includeEmptyFilters: true,
+          },
+          dataProvider: { dataSourceId: datasetId },
+          variables: true,
+        };
+
+        console.log(`Creating card [${viz.id}] "${viz.title}":`, config);
         await createCard(pageId, config);
+        createdCount++;
+      }
+
+      if (createdCount === 0) {
+        setStatus(
+          "error:No cards were created. Check dataset mapping and selected charts.",
+        );
+        return;
       }
 
       setStatus("success");

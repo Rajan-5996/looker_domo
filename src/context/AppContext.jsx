@@ -7,30 +7,35 @@ const previewCache = new Map();
 
 export function AppProvider({ children }) {
   const [lookerInstanceUrl, setLookerInstanceUrl] = useState("");
-  const [lookerClientId, setLookerClientId]       = useState("");
+  const [lookerClientId, setLookerClientId] = useState("");
   const [lookerClientSecret, setLookerClientSecret] = useState("");
-  const [selectedDash, setSelectedDash]           = useState(null);
+  const [selectedDash, setSelectedDash] = useState(null);
 
-  const [previewData, setPreviewData]     = useState(null);
+  const [previewData, setPreviewData] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError]   = useState(null);
+  const [previewError, setPreviewError] = useState(null);
   const cachedDashIdRef = useRef(null);
 
   const API_BASE = envConfig.baseUrl;
+  const Local_Base_API = envConfig.localBaseUrl;
+
+  const migrateDashboard = (payload) => {
+    return axios.post(`${Local_Base_API}/migrate`, payload);
+  }
 
   const fetchDashboards = async (controller) => {
     try {
       const resp = await axios.post(
         `${API_BASE}/looker/dashboards`,
         {
-          looker_url:           lookerInstanceUrl,
-          looker_client_id:     lookerClientId,
+          looker_url: lookerInstanceUrl,
+          looker_client_id: lookerClientId,
           looker_client_secret: lookerClientSecret,
         },
         {
-          signal:  controller?.signal,
+          signal: controller?.signal,
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
       return resp.data;
     } catch (error) {
@@ -69,15 +74,15 @@ export function AppProvider({ children }) {
         const resp = await axios.post(
           `${API_BASE}/looker/preview`,
           {
-            looker_url:           lookerInstanceUrl,
-            looker_id:            selectedDash.id,
-            looker_client_id:     lookerClientId,
+            looker_url: lookerInstanceUrl,
+            looker_id: selectedDash.id,
+            looker_client_id: lookerClientId,
             looker_client_secret: lookerClientSecret,
           },
           {
-            signal:  controller?.signal,
+            signal: controller?.signal,
             headers: { "Content-Type": "application/json" },
-          }
+          },
         );
 
         if (controller?.signal?.aborted) return;
@@ -96,7 +101,7 @@ export function AppProvider({ children }) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lookerInstanceUrl, lookerClientId, lookerClientSecret, selectedDash?.id]
+    [lookerInstanceUrl, lookerClientId, lookerClientSecret, selectedDash?.id],
   );
 
   const selectDash = useCallback((dash) => {
@@ -117,7 +122,7 @@ export function AppProvider({ children }) {
     setLookerClientSecret,
 
     selectedDash,
-    setSelectedDash: selectDash,   
+    setSelectedDash: selectDash,
 
     fetchDashboards,
     fetchPreview,
@@ -125,6 +130,8 @@ export function AppProvider({ children }) {
     previewData,
     previewLoading,
     previewError,
+
+    migrateDashboard
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
