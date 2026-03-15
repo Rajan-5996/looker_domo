@@ -1,7 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { GridBackground } from "./components/BackgroundGrid";
 import Header from "./components/Header";
-import { DashBoard, LookerAuth, Migrate } from "./pages";
+import { DashBoard, LookerAuth, Migrate, NotFound } from "./pages";
 
 function App() {
   return (
@@ -32,6 +32,13 @@ function App() {
             <Route path="/" element={<LookerAuth />} />
             <Route path="/dashboard" element={<DashBoard />} />
             <Route path="/migrate" element={<Migrate />} />
+
+            <Route
+              path="*"
+              element={
+                <NotFound />
+              }
+            />
           </Routes>
         </BrowserRouter>
       </div>
